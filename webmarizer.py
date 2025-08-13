@@ -1579,6 +1579,7 @@ class Ui_MainWindow(object):
         return self.textAlphaSpinBox.value() / 100.0
 
     def getOverlayBgAlpha(self):
+        """Return background box opacity from 0.0 (transparent) to 1.0 (black)."""
         return self.textBgSlider.value() / 100.0
     # Sets WEBM number label text to slider value
     def editnumOutputsLabel(self):
