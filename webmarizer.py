@@ -20,16 +20,22 @@ def resource_path(relative_path):
 
 # Here's where we can find ffmpeg & ffprobe. Check platform first, though.
 def getDependencyPath(dependency):
-    if (platform.system() == 'Windows'):
-        if (dependency == 'ffmpeg'):
-            path = resource_path('ffmpeg.exe')
-        else:
-            path = resource_path('ffprobe.exe')
-    else:
-        if (dependency == 'ffmpeg'):
-            path = resource_path('ffmpeg')
-        else:
-            path = resource_path('ffprobe')
+    """
+    Return the path for ffmpeg/ffprobe. If a bundled binary is not present
+    fall back to the system installation available on PATH.
+    """
+    binary = 'ffmpeg' if dependency == 'ffmpeg' else 'ffprobe'
+    if platform.system() == 'Windows':
+        binary += '.exe'
+
+    # First try PyInstaller bundle path
+    path = resource_path(binary)
+
+    # If the file does not exist (e.g. on user systems where ffmpeg/ffprobe is
+    # installed separately), fall back to the bare command and rely on PATH.
+    if not os.path.isfile(path):
+        path = binary
+
     return path
 
 # Generates the file name for output, creates sub directory if specified
