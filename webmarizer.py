@@ -532,6 +532,9 @@ def init(videosList):
 # Form implementation generated from reading ui file 'webmarizer_template.ui'
 # Created by: PyQt5 UI code generator 5.10.1
 class Ui_MainWindow(object):
+    def __init__(self):
+        self.settings = QtCore.QSettings("WEBMARIZER", "WEBMARIZER")
+
     def setupUi(self, MainWindow):
         #===================================================================#
         MainWindow.setObjectName("MainWindow")
@@ -1044,7 +1047,7 @@ class Ui_MainWindow(object):
         self.stopped               = False             # Check if user has interrupted the program
         self.outputDuration        = 10                # Check length of WEBM/GIF
         self.numOutputs            = 5                 # Check number of outputs
-        self.wadsworthConstant     = True              # Check if we're skipping first 30% of the video
+        self.wadsworthConstant     = 10                # Percent of video to skip when Wadsworth is enabled
         self.time_array            = [0, 0, 0]         # Used for calculating a custom start time in single mode
         self.customStartTime       = 0                 # Calculated from time_array, inits to 0
         self.single_mode           = False             # Check if user wants a single webm at specific time 
@@ -1072,7 +1075,7 @@ class Ui_MainWindow(object):
         self.editnumOutputsLabel()
         self.editBitrateLabel()
         self.editTargetFileSizeSliderLabel()
-
+        self.loadSettings()
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "WEBMARIZER"))
@@ -1240,7 +1243,7 @@ class Ui_MainWindow(object):
                 <html>
                 <head/>
                     <body>
-                        <p><span style=\" font-size:8pt;\">Enable Wadsworth Constant (Skip first ~30%)</span></p>
+                        <p><span style=\" font-size:8pt;\">Enable Wadsworth Constant (Skip first ~10%)</span></p>
                     </body>
                 </html>
             '''))
@@ -1307,7 +1310,7 @@ class Ui_MainWindow(object):
                 <html>
                 <head/>
                     <body>
-                        <p><span style=\"font-size:16pt;\">Enable Wadsworth Constant (Skip first ~30%)</span></p>
+                        <p><span style=\"font-size:16pt;\">Enable Wadsworth Constant (Skip first ~10%)</span></p>
                     </body>
                 </html>
             '''))
@@ -1393,11 +1396,11 @@ class Ui_MainWindow(object):
         self.enableGifMode()
         return self.output_type
 
-    # Determines whether we skip first 30% of video or not. To-do: make this customizeable.
+    # Determines whether we skip the first part of the video. To-do: make this customizeable.
     def enableWadsworth(self):
         if (self.wadsworthCheckBox.isChecked()):
-            self.wadsworthConstant = 30
-            print("Wadsworth constant is enabled. Skipping first 30% of video.")
+            self.wadsworthConstant = 10
+            print("Wadsworth constant is enabled. Skipping first 10% of video.")
         else:
             self.wadsworthConstant = 0
             print("Wadsworth constant is disabled. Starting from beginning of video.")
@@ -1598,11 +1601,69 @@ class Ui_MainWindow(object):
     def getOutputDirName(self):
         return self.output_dir_name
 
+    def saveSettings(self):
+        self.settings.setValue('duration', self.durationSlider.value())
+        self.settings.setValue('width', self.widthSlider.value())
+        self.settings.setValue('outputs', self.numOutputsSlider.value())
+        self.settings.setValue('bitrate', self.bitRateSlider.value())
+        self.settings.setValue('filesize', self.fileSizeSlider.value())
+        self.settings.setValue('wadsworth', self.wadsworthCheckBox.isChecked())
+        self.settings.setValue('gifmode', self.gifModeCheckBox.isChecked())
+        self.settings.setValue('audio', self.audioCheckBox.isChecked())
+        self.settings.setValue('targetFileSize', self.targetFileSizeCheckBox.isChecked())
+        self.settings.setValue('singleMode', self.startTimeCheckBox.isChecked())
+        self.settings.setValue('thumbnailMode', self.thumbnailModeCheckBox.isChecked())
+        self.settings.setValue('timeEdit', self.timeEdit.time().toString())
+        self.settings.setValue('thumbnailDropdown', self.thumbnailDropdown.currentIndex())
+        self.settings.setValue('overlay_text', self.textOverlayInput.text())
+        self.settings.setValue('overlay_size', self.textSizeSpinBox.value())
+        self.settings.setValue('overlay_x', self.textXSpinBox.value())
+        self.settings.setValue('overlay_y', self.textYSpinBox.value())
+        self.settings.setValue('overlay_color', self.textColorInput.text())
+        self.settings.setValue('overlay_alpha', self.textAlphaSpinBox.value())
+        self.settings.setValue('output_to_subdir', self.output_to_subdir)
+        self.settings.setValue('output_dir_name', self.output_dir_name)
+
+    def loadSettings(self):
+        duration = int(self.settings.value('duration', 10))
+        width = int(self.settings.value('width', 500))
+        outputs = int(self.settings.value('outputs', 5))
+        bitrate = int(self.settings.value('bitrate', 1500))
+        filesize = int(self.settings.value('filesize', 4000))
+        self.durationSlider.setSliderPosition(duration)
+        self.widthSlider.setSliderPosition(width)
+        self.numOutputsSlider.setSliderPosition(outputs)
+        self.bitRateSlider.setSliderPosition(bitrate)
+        self.fileSizeSlider.setSliderPosition(filesize)
+        self.wadsworthCheckBox.setChecked(self.settings.value('wadsworth', True, type=bool))
+        self.gifModeCheckBox.setChecked(self.settings.value('gifmode', False, type=bool))
+        self.audioCheckBox.setChecked(self.settings.value('audio', True, type=bool))
+        self.targetFileSizeCheckBox.setChecked(self.settings.value('targetFileSize', False, type=bool))
+        self.startTimeCheckBox.setChecked(self.settings.value('singleMode', False, type=bool))
+        self.thumbnailModeCheckBox.setChecked(self.settings.value('thumbnailMode', False, type=bool))
+        time_str = self.settings.value('timeEdit', '00:00:00')
+        self.timeEdit.setTime(QtCore.QTime.fromString(time_str, 'hh:mm:ss'))
+        self.thumbnailDropdown.setCurrentIndex(int(self.settings.value('thumbnailDropdown', 0)))
+        self.textOverlayInput.setText(self.settings.value('overlay_text', ''))
+        self.textSizeSpinBox.setValue(int(self.settings.value('overlay_size', 24)))
+        self.textXSpinBox.setValue(int(self.settings.value('overlay_x', 0)))
+        self.textYSpinBox.setValue(int(self.settings.value('overlay_y', 0)))
+        self.textColorInput.setText(self.settings.value('overlay_color', ''))
+        self.textAlphaSpinBox.setValue(int(self.settings.value('overlay_alpha', 100)))
+        self.output_to_subdir = self.settings.value('output_to_subdir', False, type=bool)
+        self.output_dir_name = self.settings.value('output_dir_name', 'output')
+        self.editDurationLabel()
+        self.editWidthLabel()
+        self.editnumOutputsLabel()
+        self.editBitrateLabel()
+        self.editTargetFileSizeSliderLabel()
+
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
     GUI = Ui_MainWindow()
     GUI.setupUi(MainWindow)
+    app.aboutToQuit.connect(GUI.saveSettings)
     MainWindow.show()
     sys.exit(app.exec_())
 
