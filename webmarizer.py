@@ -529,7 +529,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         #===================================================================#
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(829, 330)
+        MainWindow.resize(829, 600)
         MainWindow.setDocumentMode(False)
         MainWindow.setTabShape(QtWidgets.QTabWidget.Triangular)
         MainWindow.setUnifiedTitleAndToolBarOnMac(True)
@@ -698,7 +698,7 @@ class Ui_MainWindow(object):
         self.tabWidget.setAutoFillBackground(False)
         self.tabWidget.setTabShape(QtWidgets.QTabWidget.Rounded)
         self.tabWidget.setDocumentMode(False)
-        self.tabWidget.setGeometry(QtCore.QRect(0, -30, 831, 341))
+        self.tabWidget.setGeometry(QtCore.QRect(0, -30, 831, 550))
         self.tabWidget.addTab(self.generalTab, "")
         self.tabWidget.addTab(self.advancedTab, "")
         self.tabWidget.setStyleSheet(tabStyleString)
@@ -710,7 +710,7 @@ class Ui_MainWindow(object):
             }
         """)
         #===================================================================#
-        self.layoutWidget.setGeometry(QtCore.QRect(20, 40, 381, 211))
+        self.layoutWidget.setGeometry(QtCore.QRect(20, 40, 381, 450))
         #===================================================================#
         sizePolicy.setHeightForWidth(self.wadsworthCheckBox.sizePolicy().hasHeightForWidth())
         self.wadsworthCheckBox.setSizePolicy(sizePolicy)
@@ -995,17 +995,17 @@ class Ui_MainWindow(object):
         self.thumbnailModeLabel.setFont(font)
         self.thumbnailModeLabel.setTextFormat(QtCore.Qt.RichText)
         #===================================================================#
-        self.statusLabel.setGeometry(QtCore.QRect(430, 270, 351, 31))
+        self.statusLabel.setGeometry(QtCore.QRect(430, 540, 351, 31))
         self.statusLabel.setText("")
         self.statusLabel.setWordWrap(True)
         #===================================================================#
-        self.createBtn.setGeometry(QtCore.QRect(10, 260, 123, 61))
+        self.createBtn.setGeometry(QtCore.QRect(10, 530, 123, 61))
         self.createBtn.setFont(font)
         #===================================================================#
-        self.startSingleBtn.setGeometry(QtCore.QRect(140, 260, 131, 61))
+        self.startSingleBtn.setGeometry(QtCore.QRect(140, 530, 131, 61))
         self.startSingleBtn.setFont(font)
         #===================================================================#
-        self.stopBtn.setGeometry(QtCore.QRect(280, 260, 131, 61))
+        self.stopBtn.setGeometry(QtCore.QRect(280, 530, 131, 61))
         self.stopBtn.setFont(font)
         #===================================================================#
         MainWindow.setCentralWidget(self.centralwidget)

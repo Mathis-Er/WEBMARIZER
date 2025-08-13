@@ -23,6 +23,13 @@ WEBMARIZER automatically 'summarizes' a video by creating multiple WEBMs / GIFs 
 - Lets you choose specific times / timestamps from which to generate GIFs or WEBMs
 - Add custom text overlays to GIFs with configurable size, position, colour and transparency
 
+## Text overlay
+
+Use the text overlay fields in the General tab to caption GIFs. Set the
+message, font size, X/Y position, colour (name or hex) and transparency
+percentage before clicking **Create**.
+=======
+
 ## Where do I get it?
 
 Go to the releases section [here](https://github.com/nyavramov/WEBMARIZER/releases) and download the latest release for Mac OSX or Windows.
