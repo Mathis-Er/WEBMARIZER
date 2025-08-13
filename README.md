@@ -28,6 +28,7 @@ WEBMARIZER automatically 'summarizes' a video by creating multiple WEBMs / GIFs 
 Use the text overlay fields in the General tab to caption GIFs. Set the
 message, font size, X/Y position, colour (name or hex) and transparency
 percentage before clicking **Create**.
+=======
 
 ## Where do I get it?
 
