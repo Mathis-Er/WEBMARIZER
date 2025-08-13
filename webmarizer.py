@@ -6,6 +6,8 @@ from PyQt5 import QtGui, QtCore, QtWidgets
 
 # Command for creating pyinstaller executable:
 # sudo pyinstaller -F --add-data 'ffmpeg:.' --add-data 'ffprobe:.' webmarizer.py
+# For Apple Silicon builds use:
+# sudo pyinstaller -F --target-arch arm64 --add-data 'ffmpeg:.' --add-data 'ffprobe:.' webmarizer.py
 
 # CD to the current directory of the script/executable 
 os.chdir(os.path.dirname(os.path.abspath(sys.argv[0])))
@@ -31,10 +33,21 @@ def getDependencyPath(dependency):
     # First try PyInstaller bundle path
     path = resource_path(binary)
 
-    # If the file does not exist (e.g. on user systems where ffmpeg/ffprobe is
-    # installed separately), fall back to the bare command and rely on PATH.
+    # If the bundled binary is missing, look for common macOS install locations
     if not os.path.isfile(path):
-        path = binary
+        if platform.system() == 'Darwin':
+            common_paths = [
+                '/opt/homebrew/bin',   # Homebrew on Apple Silicon
+                '/usr/local/bin',      # Homebrew on Intel
+            ]
+            for prefix in common_paths:
+                candidate = os.path.join(prefix, binary)
+                if os.path.isfile(candidate):
+                    path = candidate
+                    break
+        # If still not found, rely on PATH resolution
+        if not os.path.isfile(path):
+            path = binary
 
     return path
 
@@ -108,16 +121,28 @@ def createGif(params):
     GUI.setStatusText("Currently creating: " + fileName_gif)
 
     # Set channel so we can see FFmpeg output
-    params['FFmpegProcess'].setProcessChannelMode(QtCore.QProcess.MergedChannels)
+    process = params['FFmpegProcess']
+    process.setProcessChannelMode(QtCore.QProcess.MergedChannels)
     app.processEvents()
 
-    # Currently, no way of stopping FFmpeg from GUI since GUI is frozen
-    # See multithreading for potential solution
-    if (params['stopped'] == False):
-        params['FFmpegProcess'].execute(params['ffmpeg_path'], paletteArgs)
-        params['FFmpegProcess'].waitForFinished(-1)
-        params['FFmpegProcess'].execute(params['ffmpeg_path'], gifArgs)
-        params['FFmpegProcess'].waitForFinished(-1)
+    process = params['FFmpegProcess']
+    process.start(params['ffmpeg_path'], paletteArgs)
+    while process.state() == QtCore.QProcess.Running:
+        app.processEvents()
+        if GUI.getProcessStoppedStatus():
+            process.kill()
+            return
+
+    process.start(params['ffmpeg_path'], gifArgs)
+    while process.state() == QtCore.QProcess.Running:
+        app.processEvents()
+        if GUI.getProcessStoppedStatus():
+            process.kill()
+            if os.path.exists("palette.png"):
+                os.remove("palette.png")
+            return
+
+    if os.path.exists("palette.png"):
         os.remove("palette.png")
 
 # Use ffmpeg to create WEBM and read its stdout. To-Do:Use some regex later for progress bar
@@ -129,15 +154,19 @@ def createWebm(params):
 
     scaleString = 'scale=' + str(params['outputWidth']) + ':-2'
     
+    codec = 'libvpx'
+    if platform.system() == 'Darwin':
+        codec = 'h264_videotoolbox'
+
     # General arguments to pass to FFmpeg
     args = [
-        '-y'  ,
-        '-ss' , str(params['startTime']),
-        '-t'  , str(params['outputDuration']),
-        '-i'  , params['fileName'],
-        '-vf' , scaleString,
-        '-c:v', 'libvpx',
-        '-b:v', str(params['bitrate'])+"K",
+        '-y',
+        '-ss', str(params['startTime']),
+        '-t', str(params['outputDuration']),
+        '-i', params['fileName'],
+        '-vf', scaleString,
+        '-c:v', codec,
+        '-b:v', str(params['bitrate']) + "K",
         '-b:a', '96K',
         '-c:a', 'libvorbis'
     ]
@@ -151,13 +180,15 @@ def createWebm(params):
 
     GUI.setStatusText("Currently creating: " + fileName_webm)
 
-    params['FFmpegProcess'].setProcessChannelMode(QtCore.QProcess.MergedChannels)
-    app.processEvents()
-
-    if (params['stopped'] == False):
-        params['FFmpegProcess'].execute(params['ffmpeg_path'], args)
-        params['FFmpegProcess'].waitForFinished(-1)
-        params['FFmpegProcess'].kill() # When we're done, kill process
+    process = params['FFmpegProcess']
+    process.setProcessChannelMode(QtCore.QProcess.MergedChannels)
+    process.start(params['ffmpeg_path'], args)
+    while process.state() == QtCore.QProcess.Running:
+        app.processEvents()
+        if GUI.getProcessStoppedStatus():
+            process.kill()
+            return
+    process.kill()  # When we're done, kill process
 
 # Searches current directory for .mp4,.wmv,.avi, .mpeg, and .mkv videos
 def createVideoList():
@@ -222,13 +253,17 @@ def join_videos(params):
             # Save previous column output so that we can use it as fileName1 in next iteration
             previousColumnOutput = output
 
+            codec = 'libvpx'
+            if platform.system() == 'Darwin':
+                codec = 'h264_videotoolbox'
+
             # General FFmpeg settings
             args = [
-                '-y'  ,
-                '-i'  ,  fileName1,
-                '-i'  ,  fileName2,
-                '-c:v', 'libvpx',
-                '-b:v', str(params['bitrate'])+"K",
+                '-y',
+                '-i', fileName1,
+                '-i', fileName2,
+                '-c:v', codec,
+                '-b:v', str(params['bitrate']) + "K",
                 '-b:a', '96K',
                 '-c:a', 'libvorbis'
             ]
@@ -258,9 +293,12 @@ def join_videos(params):
             # Add what we'd like output to be called to FFmpeg args array
             args.append(output)
 
-            # Execute the concatenation process
-            params['FFmpegProcess'].execute(params['ffmpeg_path'], args)
-            params['FFmpegProcess'].waitForFinished(-1)
+            process.start(params['ffmpeg_path'], args)
+            while process.state() == QtCore.QProcess.Running:
+                app.processEvents()
+                if GUI.getProcessStoppedStatus():
+                    process.kill()
+                    return
             
             # Increment fileCount so we know which WEBM to use as input
             fileCount = fileCount + 1
@@ -295,13 +333,17 @@ def join_videos(params):
             output = os.path.splitext(params['fileName'])[0] + '_THUMBNAIL.webm'
         previousRow = output
         
-        # General FFmpeg settings 
+        codec = 'libvpx'
+        if platform.system() == 'Darwin':
+            codec = 'h264_videotoolbox'
+
+        # General FFmpeg settings
         args2 = [
-            '-y'  ,
-            '-i'  ,  fileName1,
-            '-i'  ,  fileName2,
-            '-c:v', 'libvpx',
-            '-b:v', str(params['bitrate'])+"K",
+            '-y',
+            '-i', fileName1,
+            '-i', fileName2,
+            '-c:v', codec,
+            '-b:v', str(params['bitrate']) + "K",
             '-b:a', '96K',
             '-c:a', 'libvorbis'
         ]
@@ -331,9 +373,12 @@ def join_videos(params):
         # Add what we'd like output to be called to FFmpeg args array
         args2.append(output)
 
-        # Execute the vertical stacking of rows
-        params['FFmpegProcess'].execute(params['ffmpeg_path'], args2)
-        params['FFmpegProcess'].waitForFinished(-1)
+        process.start(params['ffmpeg_path'], args2)
+        while process.state() == QtCore.QProcess.Running:
+            app.processEvents()
+            if GUI.getProcessStoppedStatus():
+                process.kill()
+                return
     
 # Create a parameter dictionary to hold media information
 # Useful so we don't have to pass a bunch of vars between functions
@@ -435,9 +480,6 @@ def composeMediaParamDictionary(aVideo):
     if single_mode:
         numOutputs = 1
 
-    # Use this to check if user has stopped the program
-    stopped = GUI.getProcessStoppedStatus()
-
     # output dir feature
     output_to_subdir = GUI.output_to_subdir
     output_dir_name = GUI.output_dir_name
@@ -470,7 +512,6 @@ def composeMediaParamDictionary(aVideo):
         'overlay_alpha'         : overlay_alpha,
         'bitrate'               : bitrate,
         'audioEnabled'          : audioEnabled,
-        'stopped'               : stopped,
         'thumbnailNumTilesSide' : thumbnailNumTilesSide,
         'output_to_subdir'      : output_to_subdir,
         'output_dir_name'       : output_dir_name
@@ -486,16 +527,14 @@ def processVideo(aVideo):
         return
 
     params = composeMediaParamDictionary(aVideo)
-
-    # Check if user has stopped the program
-    if params['stopped']:
-        app.processEvents() 
-        GUI.setStatusText("Process killed.")
-        return
     
     # Iteratively create the number of GIFs/WEBMs that user requested
     for output in range(params['numOutputs']):
-        app.processEvents() 
+        app.processEvents()
+        if GUI.getProcessStoppedStatus():
+            GUI.setStatusText("Process killed.")
+            return
+
         params['numFiles'] += 1
 
         # If we're trying to create output past the end of video, break
@@ -1344,8 +1383,9 @@ class Ui_MainWindow(object):
 
     # Attempts to kill WEBM creation process
     def stopProcess(self):
-        self.FFmpegProcess.kill()
-        self.stopped = False
+        if hasattr(self, 'FFmpegProcess'):
+            self.FFmpegProcess.kill()
+        self.stopped = True
 
     # Return whether process has been stopped or not
     # To-do: Fix this. I think we're going to need a separate thread so GUI doesn't freeze
@@ -1588,11 +1628,13 @@ class Ui_MainWindow(object):
 
     # Starts creating WEBMs from all videos in list
     def createMedia(self):
+        self.stopped = False
         init(self.videos_array)
 
     # Starts creating WEBMs only from selected video in list
     # To-do: Add ability to select multiple videos from list using command/shift/ctrl etc
     def createSelectedMedia(self):
+        self.stopped = False
         processVideo(self.selectedVideo)
 
     def getOutputSubDir(self):
@@ -1659,6 +1701,8 @@ class Ui_MainWindow(object):
         self.editTargetFileSizeSliderLabel()
 
 if __name__ == "__main__":
+    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
+    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
     GUI = Ui_MainWindow()
