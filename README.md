@@ -21,6 +21,13 @@ WEBMARIZER automatically 'summarizes' a video by creating multiple WEBMs / GIFs 
 - Allows you to set limits on file size and width for both WEBMs and GIFs to comply with website limits (4chan, reddit, tumblr, etc)
 - Allows you to enable or disable audio for WEBMs
 - Lets you choose specific times / timestamps from which to generate GIFs or WEBMs
+- Add custom text overlays to GIFs with configurable size, position, colour and transparency
+
+## Text overlay
+
+Use the text overlay fields in the General tab to caption GIFs. Set the
+message, font size, X/Y position, colour (name or hex) and transparency
+percentage before clicking **Create**.
 
 ## Where do I get it?
 
