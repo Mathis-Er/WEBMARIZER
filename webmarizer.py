@@ -804,7 +804,6 @@ class Ui_MainWindow(object):
         self.textAlphaSpinBox.setRange(0, 100)
         self.textAlphaSpinBox.setValue(100)
         self.textAlphaSpinBox.setObjectName("textAlphaSpinBox")
-
         self.textBgLabel = QtWidgets.QLabel(self.layoutWidget)
         self.textBgLabel.setEnabled(True)
         self.textBgLabel.setFont(font)
@@ -1581,7 +1580,6 @@ class Ui_MainWindow(object):
 
     def getOverlayBgAlpha(self):
         return self.textBgSlider.value() / 100.0
-
     # Sets WEBM number label text to slider value
     def editnumOutputsLabel(self):
         self.numOutputsLabel.setText("Number of WEBMs: " + str(self.numOutputsSlider.value()))
