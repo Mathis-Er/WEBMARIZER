@@ -11,7 +11,9 @@ Webmarizer is a GUI wrapper for FFmpeg.
 
 The application expects `ffmpeg` and `ffprobe` to be available. Bundled
 binaries are used when present; otherwise, the system versions on your `PATH`
-are executed. Install FFmpeg separately (e.g. `brew install ffmpeg` on macOS)
+are executed. On macOS the application also checks common Homebrew locations
+like `/opt/homebrew/bin` so Apple Silicon users with default installations are
+picked up automatically. Install FFmpeg separately (e.g. `brew install ffmpeg`)
 if you encounter errors about missing executables.
 
 ## What does it do?
@@ -29,6 +31,8 @@ WEBMARIZER automatically 'summarizes' a video by creating multiple WEBMs / GIFs 
 - Allows you to enable or disable audio for WEBMs
 - Lets you choose specific times / timestamps from which to generate GIFs or WEBMs
 - Add custom text overlays to GIFs with configurable size, position, colour and transparency
+- Uses VideoToolbox hardware acceleration on macOS when available
+- Modernised interface styled via a Qt Style Sheet (`style.qss`)
 
 ## Text overlay
 
@@ -39,3 +43,12 @@ percentage before clicking **Create**.
 ## Where do I get it?
 
 Go to the releases section [here](https://github.com/nyavramov/WEBMARIZER/releases) and download the latest release for Mac OSX or Windows.
+
+### Building for Apple Silicon
+
+When packaging on an Apple Silicon Mac, pass `--target-arch arm64` to
+PyInstaller and bundle arm64 FFmpeg binaries:
+
+```
+sudo pyinstaller -F --target-arch arm64 --add-data 'ffmpeg:.' --add-data 'ffprobe:.' webmarizer.py
+```
