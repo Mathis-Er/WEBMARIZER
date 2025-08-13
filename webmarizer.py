@@ -587,7 +587,6 @@ class Ui_MainWindow(object):
         self.centralwidget.setObjectName("centralwidget")
         #===================================================================#
         sizePolicy       = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        sizePolicy       = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         #===================================================================#
         spacerItem       = QtWidgets.QSpacerItem(20, 25, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Preferred)
         spacerItem1      = QtWidgets.QSpacerItem(20, 25, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Preferred)
@@ -1703,6 +1702,17 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     app.setStyle("Fusion")
     app.setFont(QtGui.QFont("Helvetica Neue", 11))
+
+    # Enforce a black-on-white palette so text remains readable
+    palette = app.palette()
+    palette.setColor(QtGui.QPalette.Window, QtGui.QColor("white"))
+    palette.setColor(QtGui.QPalette.WindowText, QtGui.QColor("black"))
+    palette.setColor(QtGui.QPalette.Base, QtGui.QColor("white"))
+    palette.setColor(QtGui.QPalette.Text, QtGui.QColor("black"))
+    palette.setColor(QtGui.QPalette.Button, QtGui.QColor("white"))
+    palette.setColor(QtGui.QPalette.ButtonText, QtGui.QColor("black"))
+    app.setPalette(palette)
+
     try:
         with open(resource_path('style.qss'), 'r') as fh:
             app.setStyleSheet(fh.read())

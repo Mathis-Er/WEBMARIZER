@@ -32,6 +32,7 @@ WEBMARIZER automatically 'summarizes' a video by creating multiple WEBMs / GIFs 
 - Lets you choose specific times / timestamps from which to generate GIFs or WEBMs
 - Add custom text overlays to GIFs with configurable size, position, colour and transparency
 - Uses VideoToolbox hardware acceleration on macOS when available
+- Runs FFmpeg jobs asynchronously so the interface stays responsive and jobs can be cancelled
 - Modernised interface styled via a Qt Style Sheet (`style.qss`)
 
 ## Text overlay
