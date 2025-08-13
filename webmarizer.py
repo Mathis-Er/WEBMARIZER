@@ -20,16 +20,22 @@ def resource_path(relative_path):
 
 # Here's where we can find ffmpeg & ffprobe. Check platform first, though.
 def getDependencyPath(dependency):
-    if (platform.system() == 'Windows'):
-        if (dependency == 'ffmpeg'):
-            path = resource_path('ffmpeg.exe')
-        else:
-            path = resource_path('ffprobe.exe')
-    else:
-        if (dependency == 'ffmpeg'):
-            path = resource_path('ffmpeg')
-        else:
-            path = resource_path('ffprobe')
+    """
+    Return the path for ffmpeg/ffprobe. If a bundled binary is not present
+    fall back to the system installation available on PATH.
+    """
+    binary = 'ffmpeg' if dependency == 'ffmpeg' else 'ffprobe'
+    if platform.system() == 'Windows':
+        binary += '.exe'
+
+    # First try PyInstaller bundle path
+    path = resource_path(binary)
+
+    # If the file does not exist (e.g. on user systems where ffmpeg/ffprobe is
+    # installed separately), fall back to the bare command and rely on PATH.
+    if not os.path.isfile(path):
+        path = binary
+
     return path
 
 # Generates the file name for output, creates sub directory if specified
@@ -51,7 +57,17 @@ def createGif(params):
 
     # Set the size of the GIF and filters
     scaleString = 'scale=' + str(params['outputWidth']) + ':-2'
-    filters='fps=20,scale=' + str(params['outputWidth']) + ':-1:flags=lanczos'
+    filters = 'fps=20,scale=' + str(params['outputWidth']) + ':-1:flags=lanczos'
+    if params.get('overlay_text'):
+        text_filter = ("drawtext=text='{}':fontsize={}:fontcolor={}@{}:x={}:y={}:box=1:boxcolor=black@{}".format(
+            str(params['overlay_text']).replace(':', '\\:'),
+            params['overlay_size'],
+            params['overlay_color'],
+            params['overlay_alpha'],
+            params['overlay_x'],
+            params['overlay_y'],
+            params['overlay_box_alpha']))
+        filters += ',' + text_filter
     
     # 1st Generate a pallete with ffmpeg
     paletteArgs = [
@@ -373,9 +389,18 @@ def composeMediaParamDictionary(aVideo):
     else:
         fileSize = -1
 
-    # Check whether audio is enabled 
+    # Check whether audio is enabled
     audioEnabled = GUI.getAudioEnabledState()
-    
+
+    # Get text overlay parameters
+    overlay_text = GUI.getOverlayText()
+    overlay_size = GUI.getOverlayTextSize()
+    overlay_x = GUI.getOverlayX()
+    overlay_y = GUI.getOverlayY()
+    overlay_color = GUI.getOverlayColor()
+    overlay_alpha = GUI.getOverlayAlpha()
+    overlay_bg_alpha = GUI.getOverlayBgAlpha()
+
     # Makes sure WEBM length "L" isn't created at startTime + L > Length of video
     lenLimit = getLenLimit(totalSeconds, outputDuration)
 
@@ -439,6 +464,13 @@ def composeMediaParamDictionary(aVideo):
         'interval'              : interval,
         'output_type'           : output_type,
         'thumbnailMode'         : thumbnailMode,
+        'overlay_text'          : overlay_text,
+        'overlay_size'          : overlay_size,
+        'overlay_x'             : overlay_x,
+        'overlay_y'             : overlay_y,
+        'overlay_color'         : overlay_color,
+        'overlay_alpha'         : overlay_alpha,
+        'overlay_box_alpha'     : overlay_bg_alpha,
         'bitrate'               : bitrate,
         'audioEnabled'          : audioEnabled,
         'stopped'               : stopped,
@@ -506,7 +538,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         #===================================================================#
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(829, 330)
+        MainWindow.resize(829, 600)
         MainWindow.setDocumentMode(False)
         MainWindow.setTabShape(QtWidgets.QTabWidget.Triangular)
         MainWindow.setUnifiedTitleAndToolBarOnMac(True)
@@ -675,7 +707,7 @@ class Ui_MainWindow(object):
         self.tabWidget.setAutoFillBackground(False)
         self.tabWidget.setTabShape(QtWidgets.QTabWidget.Rounded)
         self.tabWidget.setDocumentMode(False)
-        self.tabWidget.setGeometry(QtCore.QRect(0, -30, 831, 341))
+        self.tabWidget.setGeometry(QtCore.QRect(0, -30, 831, 550))
         self.tabWidget.addTab(self.generalTab, "")
         self.tabWidget.addTab(self.advancedTab, "")
         self.tabWidget.setStyleSheet(tabStyleString)
@@ -687,7 +719,7 @@ class Ui_MainWindow(object):
             }
         """)
         #===================================================================#
-        self.layoutWidget.setGeometry(QtCore.QRect(20, 40, 381, 211))
+        self.layoutWidget.setGeometry(QtCore.QRect(20, 40, 381, 450))
         #===================================================================#
         sizePolicy.setHeightForWidth(self.wadsworthCheckBox.sizePolicy().hasHeightForWidth())
         self.wadsworthCheckBox.setSizePolicy(sizePolicy)
@@ -716,6 +748,74 @@ class Ui_MainWindow(object):
         self.widthSlider.setMaximum(3000)
         self.widthSlider.setOrientation(QtCore.Qt.Horizontal)
         self.widthSlider.setStyleSheet(sliderStyleString)
+        #===================================================================#
+        # Widgets for GIF text overlay options
+        self.textOverlayLabel = QtWidgets.QLabel(self.layoutWidget)
+        self.textOverlayLabel.setEnabled(True)
+        self.textOverlayLabel.setFont(font)
+        self.textOverlayLabel.setTextFormat(QtCore.Qt.RichText)
+        self.textOverlayLabel.setObjectName("textOverlayLabel")
+
+        self.textOverlayInput = QtWidgets.QLineEdit(self.layoutWidget)
+        self.textOverlayInput.setObjectName("textOverlayInput")
+
+        self.textSizeLabel = QtWidgets.QLabel(self.layoutWidget)
+        self.textSizeLabel.setEnabled(True)
+        self.textSizeLabel.setFont(font)
+        self.textSizeLabel.setTextFormat(QtCore.Qt.RichText)
+        self.textSizeLabel.setObjectName("textSizeLabel")
+
+        self.textSizeSpinBox = QtWidgets.QSpinBox(self.layoutWidget)
+        self.textSizeSpinBox.setRange(6, 128)
+        self.textSizeSpinBox.setValue(24)
+        self.textSizeSpinBox.setObjectName("textSizeSpinBox")
+
+        self.textPositionLabel = QtWidgets.QLabel(self.layoutWidget)
+        self.textPositionLabel.setEnabled(True)
+        self.textPositionLabel.setFont(font)
+        self.textPositionLabel.setTextFormat(QtCore.Qt.RichText)
+        self.textPositionLabel.setObjectName("textPositionLabel")
+
+        self.textXSpinBox = QtWidgets.QSpinBox(self.layoutWidget)
+        self.textXSpinBox.setRange(0, 9999)
+        self.textXSpinBox.setObjectName("textXSpinBox")
+        self.textYSpinBox = QtWidgets.QSpinBox(self.layoutWidget)
+        self.textYSpinBox.setRange(0, 9999)
+        self.textYSpinBox.setObjectName("textYSpinBox")
+        self.positionLayout = QtWidgets.QHBoxLayout()
+        self.positionLayout.addWidget(self.textXSpinBox)
+        self.positionLayout.addWidget(self.textYSpinBox)
+
+        self.textColorLabel = QtWidgets.QLabel(self.layoutWidget)
+        self.textColorLabel.setEnabled(True)
+        self.textColorLabel.setFont(font)
+        self.textColorLabel.setTextFormat(QtCore.Qt.RichText)
+        self.textColorLabel.setObjectName("textColorLabel")
+        self.textColorInput = QtWidgets.QLineEdit(self.layoutWidget)
+        self.textColorInput.setPlaceholderText("white")
+        self.textColorInput.setObjectName("textColorInput")
+
+        self.textAlphaLabel = QtWidgets.QLabel(self.layoutWidget)
+        self.textAlphaLabel.setEnabled(True)
+        self.textAlphaLabel.setFont(font)
+        self.textAlphaLabel.setTextFormat(QtCore.Qt.RichText)
+        self.textAlphaLabel.setObjectName("textAlphaLabel")
+        self.textAlphaSpinBox = QtWidgets.QSpinBox(self.layoutWidget)
+        self.textAlphaSpinBox.setRange(0, 100)
+        self.textAlphaSpinBox.setValue(100)
+        self.textAlphaSpinBox.setObjectName("textAlphaSpinBox")
+
+        self.textBgLabel = QtWidgets.QLabel(self.layoutWidget)
+        self.textBgLabel.setEnabled(True)
+        self.textBgLabel.setFont(font)
+        self.textBgLabel.setTextFormat(QtCore.Qt.RichText)
+        self.textBgLabel.setObjectName("textBgLabel")
+        self.textBgSlider = QtWidgets.QSlider(self.layoutWidget)
+        self.textBgSlider.setOrientation(QtCore.Qt.Horizontal)
+        self.textBgSlider.setRange(0, 100)
+        self.textBgSlider.setValue(0)
+        self.textBgSlider.setStyleSheet(sliderStyleString)
+        self.textBgSlider.setObjectName("textBgSlider")
         #===================================================================#
         self.numOutputsLabel.setEnabled(True)
         self.numOutputsLabel.setFont(font)
@@ -754,6 +854,18 @@ class Ui_MainWindow(object):
         self.verticalLayout.addItem(spacerItem1)
         self.verticalLayout.addWidget(self.widthLabel)
         self.verticalLayout.addWidget(self.widthSlider)
+        self.verticalLayout.addWidget(self.textOverlayLabel)
+        self.verticalLayout.addWidget(self.textOverlayInput)
+        self.verticalLayout.addWidget(self.textSizeLabel)
+        self.verticalLayout.addWidget(self.textSizeSpinBox)
+        self.verticalLayout.addWidget(self.textPositionLabel)
+        self.verticalLayout.addLayout(self.positionLayout)
+        self.verticalLayout.addWidget(self.textColorLabel)
+        self.verticalLayout.addWidget(self.textColorInput)
+        self.verticalLayout.addWidget(self.textAlphaLabel)
+        self.verticalLayout.addWidget(self.textAlphaSpinBox)
+        self.verticalLayout.addWidget(self.textBgLabel)
+        self.verticalLayout.addWidget(self.textBgSlider)
         #===================================================================#
         self.verticalLayout_2.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout_2.addLayout(self.verticalLayout_4)
@@ -906,17 +1018,17 @@ class Ui_MainWindow(object):
         self.thumbnailModeLabel.setFont(font)
         self.thumbnailModeLabel.setTextFormat(QtCore.Qt.RichText)
         #===================================================================#
-        self.statusLabel.setGeometry(QtCore.QRect(430, 270, 351, 31))
+        self.statusLabel.setGeometry(QtCore.QRect(430, 540, 351, 31))
         self.statusLabel.setText("")
         self.statusLabel.setWordWrap(True)
         #===================================================================#
-        self.createBtn.setGeometry(QtCore.QRect(10, 260, 123, 61))
+        self.createBtn.setGeometry(QtCore.QRect(10, 530, 123, 61))
         self.createBtn.setFont(font)
         #===================================================================#
-        self.startSingleBtn.setGeometry(QtCore.QRect(140, 260, 131, 61))
+        self.startSingleBtn.setGeometry(QtCore.QRect(140, 530, 131, 61))
         self.startSingleBtn.setFont(font)
         #===================================================================#
-        self.stopBtn.setGeometry(QtCore.QRect(280, 260, 131, 61))
+        self.stopBtn.setGeometry(QtCore.QRect(280, 530, 131, 61))
         self.stopBtn.setFont(font)
         #===================================================================#
         MainWindow.setCentralWidget(self.centralwidget)
@@ -970,6 +1082,7 @@ class Ui_MainWindow(object):
         self.bitRateSlider.setSliderPosition(1500)
         self.fileSizeSlider.setSliderPosition(4000)
         self.wadsworthCheckBox.setChecked(True)
+        self.loadSettings()
         self.editTargetFileSizeCheckBox()
         self.populateListLabel()
         self.editDurationLabel()
@@ -1005,6 +1118,55 @@ class Ui_MainWindow(object):
             <head/>
                 <body>
                     <p><span style=\" font-size:16pt;\">Number of WEBMs:</span></p>
+                </body>
+            </html>
+        '''))
+        #===================================================================#
+        self.textOverlayLabel.setText(_translate("MainWindow",'''
+            <html>
+            <head/>
+                <body>
+                    <p><span style=\" font-size:16pt;\">GIF Text:</span></p>
+                </body>
+            </html>
+        '''))
+        self.textSizeLabel.setText(_translate("MainWindow",'''
+            <html>
+            <head/>
+                <body>
+                    <p><span style=\" font-size:16pt;\">Text Size:</span></p>
+                </body>
+            </html>
+        '''))
+        self.textPositionLabel.setText(_translate("MainWindow",'''
+            <html>
+            <head/>
+                <body>
+                    <p><span style=\" font-size:16pt;\">Text Position (x,y):</span></p>
+                </body>
+            </html>
+        '''))
+        self.textColorLabel.setText(_translate("MainWindow",'''
+            <html>
+            <head/>
+                <body>
+                    <p><span style=\" font-size:16pt;\">Text Color:</span></p>
+                </body>
+            </html>
+        '''))
+        self.textAlphaLabel.setText(_translate("MainWindow",'''
+            <html>
+            <head/>
+                <body>
+                    <p><span style=\" font-size:16pt;\">Text Transparency (%):</span></p>
+                </body>
+            </html>
+        '''))
+        self.textBgLabel.setText(_translate("MainWindow",'''
+            <html>
+            <head/>
+                <body>
+                    <p><span style=\" font-size:16pt;\">Background Transparency (%):</span></p>
                 </body>
             </html>
         '''))
@@ -1397,6 +1559,29 @@ class Ui_MainWindow(object):
     def getFileSize(self):
         return self.fileSize
 
+    # Return text overlay settings for GIFs
+    def getOverlayText(self):
+        return self.textOverlayInput.text()
+
+    def getOverlayTextSize(self):
+        return self.textSizeSpinBox.value()
+
+    def getOverlayX(self):
+        return self.textXSpinBox.value()
+
+    def getOverlayY(self):
+        return self.textYSpinBox.value()
+
+    def getOverlayColor(self):
+        color = self.textColorInput.text()
+        return color if color else "white"
+
+    def getOverlayAlpha(self):
+        return self.textAlphaSpinBox.value() / 100.0
+
+    def getOverlayBgAlpha(self):
+        return self.textBgSlider.value() / 100.0
+
     # Sets WEBM number label text to slider value
     def editnumOutputsLabel(self):
         self.numOutputsLabel.setText("Number of WEBMs: " + str(self.numOutputsSlider.value()))
@@ -1442,11 +1627,52 @@ class Ui_MainWindow(object):
     def getOutputDirName(self):
         return self.output_dir_name
 
+    def saveSettings(self):
+        settings = QtCore.QSettings('webmarizer', 'app')
+        for widget in self.centralwidget.findChildren((QtWidgets.QLineEdit,
+                                         QtWidgets.QSpinBox,
+                                         QtWidgets.QSlider,
+                                         QtWidgets.QCheckBox,
+                                         QtWidgets.QComboBox)):
+            name = widget.objectName()
+            if isinstance(widget, QtWidgets.QLineEdit):
+                settings.setValue(name, widget.text())
+            elif isinstance(widget, QtWidgets.QSpinBox):
+                settings.setValue(name, widget.value())
+            elif isinstance(widget, QtWidgets.QSlider):
+                settings.setValue(name, widget.value())
+            elif isinstance(widget, QtWidgets.QCheckBox):
+                settings.setValue(name, widget.isChecked())
+            elif isinstance(widget, QtWidgets.QComboBox):
+                settings.setValue(name, widget.currentIndex())
+
+    def loadSettings(self):
+        settings = QtCore.QSettings('webmarizer', 'app')
+        for widget in self.centralwidget.findChildren((QtWidgets.QLineEdit,
+                                         QtWidgets.QSpinBox,
+                                         QtWidgets.QSlider,
+                                         QtWidgets.QCheckBox,
+                                         QtWidgets.QComboBox)):
+            name = widget.objectName()
+            value = settings.value(name)
+            if value is not None:
+                if isinstance(widget, QtWidgets.QLineEdit):
+                    widget.setText(value)
+                elif isinstance(widget, QtWidgets.QSpinBox):
+                    widget.setValue(int(value))
+                elif isinstance(widget, QtWidgets.QSlider):
+                    widget.setValue(int(value))
+                elif isinstance(widget, QtWidgets.QCheckBox):
+                    widget.setChecked(value == 'true' or value == True)
+                elif isinstance(widget, QtWidgets.QComboBox):
+                    widget.setCurrentIndex(int(value))
+
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
     GUI = Ui_MainWindow()
     GUI.setupUi(MainWindow)
+    app.aboutToQuit.connect(GUI.saveSettings)
     MainWindow.show()
     sys.exit(app.exec_())
 
