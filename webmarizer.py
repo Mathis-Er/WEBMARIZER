@@ -60,6 +60,16 @@ def generateOuput_filename(params, fileName, extension, numFiles):
     else:
         return os.path.splitext(fileName)[0] + '_' + str(numFiles) + '.' + extension
 
+# Runs an FFmpeg command and waits for completion, allowing GUI cancelation
+def run_ffmpeg(process, ffmpeg_path, args):
+    process.start(ffmpeg_path, args)
+    while not process.waitForFinished(100):
+        app.processEvents()
+        if GUI.getProcessStoppedStatus():
+            process.kill()
+            return False
+    return True
+
 # Create a GIF by first creating a palette, then making GIF from that palette
 # To-do: add option to control framerate
 def createGif(params):
@@ -125,22 +135,13 @@ def createGif(params):
     process.setProcessChannelMode(QtCore.QProcess.MergedChannels)
     app.processEvents()
 
-    process = params['FFmpegProcess']
-    process.start(params['ffmpeg_path'], paletteArgs)
-    while process.state() == QtCore.QProcess.Running:
-        app.processEvents()
-        if GUI.getProcessStoppedStatus():
-            process.kill()
-            return
+    if not run_ffmpeg(process, params['ffmpeg_path'], paletteArgs):
+        return
 
-    process.start(params['ffmpeg_path'], gifArgs)
-    while process.state() == QtCore.QProcess.Running:
-        app.processEvents()
-        if GUI.getProcessStoppedStatus():
-            process.kill()
-            if os.path.exists("palette.png"):
-                os.remove("palette.png")
-            return
+    if not run_ffmpeg(process, params['ffmpeg_path'], gifArgs):
+        if os.path.exists("palette.png"):
+            os.remove("palette.png")
+        return
 
     if os.path.exists("palette.png"):
         os.remove("palette.png")
@@ -182,12 +183,8 @@ def createWebm(params):
 
     process = params['FFmpegProcess']
     process.setProcessChannelMode(QtCore.QProcess.MergedChannels)
-    process.start(params['ffmpeg_path'], args)
-    while process.state() == QtCore.QProcess.Running:
-        app.processEvents()
-        if GUI.getProcessStoppedStatus():
-            process.kill()
-            return
+    if not run_ffmpeg(process, params['ffmpeg_path'], args):
+        return
     process.kill()  # When we're done, kill process
 
 # Searches current directory for .mp4,.wmv,.avi, .mpeg, and .mkv videos
@@ -223,7 +220,8 @@ Then, we add the third row to the 2 already concatenated rows:
 def join_videos(params):
     # Set GUI message while we stich WEBMs together & set channel so we can see FFmpeg output in terminal
     GUI.setStatusText("Stitching WEBMs. This may take a while.")
-    params['FFmpegProcess'].setProcessChannelMode(QtCore.QProcess.MergedChannels)
+    process = params['FFmpegProcess']
+    process.setProcessChannelMode(QtCore.QProcess.MergedChannels)
     app.processEvents()
 
     # Use this to keep track of which video we are currently appending
@@ -293,12 +291,8 @@ def join_videos(params):
             # Add what we'd like output to be called to FFmpeg args array
             args.append(output)
 
-            process.start(params['ffmpeg_path'], args)
-            while process.state() == QtCore.QProcess.Running:
-                app.processEvents()
-                if GUI.getProcessStoppedStatus():
-                    process.kill()
-                    return
+            if not run_ffmpeg(process, params['ffmpeg_path'], args):
+                return
             
             # Increment fileCount so we know which WEBM to use as input
             fileCount = fileCount + 1
@@ -373,12 +367,8 @@ def join_videos(params):
         # Add what we'd like output to be called to FFmpeg args array
         args2.append(output)
 
-        process.start(params['ffmpeg_path'], args2)
-        while process.state() == QtCore.QProcess.Running:
-            app.processEvents()
-            if GUI.getProcessStoppedStatus():
-                process.kill()
-                return
+        if not run_ffmpeg(process, params['ffmpeg_path'], args2):
+            return
     
 # Create a parameter dictionary to hold media information
 # Useful so we don't have to pass a bunch of vars between functions
