@@ -51,7 +51,16 @@ def createGif(params):
 
     # Set the size of the GIF and filters
     scaleString = 'scale=' + str(params['outputWidth']) + ':-2'
-    filters='fps=20,scale=' + str(params['outputWidth']) + ':-1:flags=lanczos'
+    filters = 'fps=20,scale=' + str(params['outputWidth']) + ':-1:flags=lanczos'
+    if params.get('overlay_text'):
+        text_filter = ("drawtext=text='{}':fontsize={}:fontcolor={}@{}:x={}:y={}".format(
+            str(params['overlay_text']).replace(':', '\\:'),
+            params['overlay_size'],
+            params['overlay_color'],
+            params['overlay_alpha'],
+            params['overlay_x'],
+            params['overlay_y']))
+        filters += ',' + text_filter
     
     # 1st Generate a pallete with ffmpeg
     paletteArgs = [
@@ -373,9 +382,17 @@ def composeMediaParamDictionary(aVideo):
     else:
         fileSize = -1
 
-    # Check whether audio is enabled 
+    # Check whether audio is enabled
     audioEnabled = GUI.getAudioEnabledState()
-    
+
+    # Get text overlay parameters
+    overlay_text = GUI.getOverlayText()
+    overlay_size = GUI.getOverlayTextSize()
+    overlay_x = GUI.getOverlayX()
+    overlay_y = GUI.getOverlayY()
+    overlay_color = GUI.getOverlayColor()
+    overlay_alpha = GUI.getOverlayAlpha()
+
     # Makes sure WEBM length "L" isn't created at startTime + L > Length of video
     lenLimit = getLenLimit(totalSeconds, outputDuration)
 
@@ -439,6 +456,12 @@ def composeMediaParamDictionary(aVideo):
         'interval'              : interval,
         'output_type'           : output_type,
         'thumbnailMode'         : thumbnailMode,
+        'overlay_text'          : overlay_text,
+        'overlay_size'          : overlay_size,
+        'overlay_x'             : overlay_x,
+        'overlay_y'             : overlay_y,
+        'overlay_color'         : overlay_color,
+        'overlay_alpha'         : overlay_alpha,
         'bitrate'               : bitrate,
         'audioEnabled'          : audioEnabled,
         'stopped'               : stopped,
@@ -717,6 +740,62 @@ class Ui_MainWindow(object):
         self.widthSlider.setOrientation(QtCore.Qt.Horizontal)
         self.widthSlider.setStyleSheet(sliderStyleString)
         #===================================================================#
+        # Widgets for GIF text overlay options
+        self.textOverlayLabel = QtWidgets.QLabel(self.layoutWidget)
+        self.textOverlayLabel.setEnabled(True)
+        self.textOverlayLabel.setFont(font)
+        self.textOverlayLabel.setTextFormat(QtCore.Qt.RichText)
+        self.textOverlayLabel.setObjectName("textOverlayLabel")
+
+        self.textOverlayInput = QtWidgets.QLineEdit(self.layoutWidget)
+        self.textOverlayInput.setObjectName("textOverlayInput")
+
+        self.textSizeLabel = QtWidgets.QLabel(self.layoutWidget)
+        self.textSizeLabel.setEnabled(True)
+        self.textSizeLabel.setFont(font)
+        self.textSizeLabel.setTextFormat(QtCore.Qt.RichText)
+        self.textSizeLabel.setObjectName("textSizeLabel")
+
+        self.textSizeSpinBox = QtWidgets.QSpinBox(self.layoutWidget)
+        self.textSizeSpinBox.setRange(6, 128)
+        self.textSizeSpinBox.setValue(24)
+        self.textSizeSpinBox.setObjectName("textSizeSpinBox")
+
+        self.textPositionLabel = QtWidgets.QLabel(self.layoutWidget)
+        self.textPositionLabel.setEnabled(True)
+        self.textPositionLabel.setFont(font)
+        self.textPositionLabel.setTextFormat(QtCore.Qt.RichText)
+        self.textPositionLabel.setObjectName("textPositionLabel")
+
+        self.textXSpinBox = QtWidgets.QSpinBox(self.layoutWidget)
+        self.textXSpinBox.setRange(0, 9999)
+        self.textXSpinBox.setObjectName("textXSpinBox")
+        self.textYSpinBox = QtWidgets.QSpinBox(self.layoutWidget)
+        self.textYSpinBox.setRange(0, 9999)
+        self.textYSpinBox.setObjectName("textYSpinBox")
+        self.positionLayout = QtWidgets.QHBoxLayout()
+        self.positionLayout.addWidget(self.textXSpinBox)
+        self.positionLayout.addWidget(self.textYSpinBox)
+
+        self.textColorLabel = QtWidgets.QLabel(self.layoutWidget)
+        self.textColorLabel.setEnabled(True)
+        self.textColorLabel.setFont(font)
+        self.textColorLabel.setTextFormat(QtCore.Qt.RichText)
+        self.textColorLabel.setObjectName("textColorLabel")
+        self.textColorInput = QtWidgets.QLineEdit(self.layoutWidget)
+        self.textColorInput.setPlaceholderText("white")
+        self.textColorInput.setObjectName("textColorInput")
+
+        self.textAlphaLabel = QtWidgets.QLabel(self.layoutWidget)
+        self.textAlphaLabel.setEnabled(True)
+        self.textAlphaLabel.setFont(font)
+        self.textAlphaLabel.setTextFormat(QtCore.Qt.RichText)
+        self.textAlphaLabel.setObjectName("textAlphaLabel")
+        self.textAlphaSpinBox = QtWidgets.QSpinBox(self.layoutWidget)
+        self.textAlphaSpinBox.setRange(0, 100)
+        self.textAlphaSpinBox.setValue(100)
+        self.textAlphaSpinBox.setObjectName("textAlphaSpinBox")
+        #===================================================================#
         self.numOutputsLabel.setEnabled(True)
         self.numOutputsLabel.setFont(font)
         self.numOutputsLabel.setTextFormat(QtCore.Qt.RichText)
@@ -754,6 +833,16 @@ class Ui_MainWindow(object):
         self.verticalLayout.addItem(spacerItem1)
         self.verticalLayout.addWidget(self.widthLabel)
         self.verticalLayout.addWidget(self.widthSlider)
+        self.verticalLayout.addWidget(self.textOverlayLabel)
+        self.verticalLayout.addWidget(self.textOverlayInput)
+        self.verticalLayout.addWidget(self.textSizeLabel)
+        self.verticalLayout.addWidget(self.textSizeSpinBox)
+        self.verticalLayout.addWidget(self.textPositionLabel)
+        self.verticalLayout.addLayout(self.positionLayout)
+        self.verticalLayout.addWidget(self.textColorLabel)
+        self.verticalLayout.addWidget(self.textColorInput)
+        self.verticalLayout.addWidget(self.textAlphaLabel)
+        self.verticalLayout.addWidget(self.textAlphaSpinBox)
         #===================================================================#
         self.verticalLayout_2.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout_2.addLayout(self.verticalLayout_4)
@@ -1005,6 +1094,47 @@ class Ui_MainWindow(object):
             <head/>
                 <body>
                     <p><span style=\" font-size:16pt;\">Number of WEBMs:</span></p>
+                </body>
+            </html>
+        '''))
+        #===================================================================#
+        self.textOverlayLabel.setText(_translate("MainWindow",'''
+            <html>
+            <head/>
+                <body>
+                    <p><span style=\" font-size:16pt;\">GIF Text:</span></p>
+                </body>
+            </html>
+        '''))
+        self.textSizeLabel.setText(_translate("MainWindow",'''
+            <html>
+            <head/>
+                <body>
+                    <p><span style=\" font-size:16pt;\">Text Size:</span></p>
+                </body>
+            </html>
+        '''))
+        self.textPositionLabel.setText(_translate("MainWindow",'''
+            <html>
+            <head/>
+                <body>
+                    <p><span style=\" font-size:16pt;\">Text Position (x,y):</span></p>
+                </body>
+            </html>
+        '''))
+        self.textColorLabel.setText(_translate("MainWindow",'''
+            <html>
+            <head/>
+                <body>
+                    <p><span style=\" font-size:16pt;\">Text Color:</span></p>
+                </body>
+            </html>
+        '''))
+        self.textAlphaLabel.setText(_translate("MainWindow",'''
+            <html>
+            <head/>
+                <body>
+                    <p><span style=\" font-size:16pt;\">Text Transparency (%):</span></p>
                 </body>
             </html>
         '''))
@@ -1396,6 +1526,26 @@ class Ui_MainWindow(object):
     # Get the file size of the WEBM/GIF
     def getFileSize(self):
         return self.fileSize
+
+    # Return text overlay settings for GIFs
+    def getOverlayText(self):
+        return self.textOverlayInput.text()
+
+    def getOverlayTextSize(self):
+        return self.textSizeSpinBox.value()
+
+    def getOverlayX(self):
+        return self.textXSpinBox.value()
+
+    def getOverlayY(self):
+        return self.textYSpinBox.value()
+
+    def getOverlayColor(self):
+        color = self.textColorInput.text()
+        return color if color else "white"
+
+    def getOverlayAlpha(self):
+        return self.textAlphaSpinBox.value() / 100.0
 
     # Sets WEBM number label text to slider value
     def editnumOutputsLabel(self):
