@@ -582,6 +582,7 @@ class Ui_MainWindow(object):
         MainWindow.setTabShape(QtWidgets.QTabWidget.Triangular)
         MainWindow.setUnifiedTitleAndToolBarOnMac(True)
         MainWindow.setStyleSheet("""
+            color: black;
             background-color: rgb(255, 255, 255);
             padding:0px;
         """)
